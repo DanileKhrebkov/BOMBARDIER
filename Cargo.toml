@@ -35,10 +35,11 @@ parking_lot = "0.12"
 urlencoding = "2.1"
 chrono = "0.4"
 
-# Metrics & Progress
+# Metrics & Progress - ДОБАВЛЯЕМ
 indicatif = { version = "0.17", features = ["tokio"] }
 num-format = "0.4"
 colored = "2.1"
+console = "0.15"
 
 # Logging
 tracing = "0.1"

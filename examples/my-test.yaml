@@ -26,6 +26,6 @@ steps:
     timeout: 5s
 
 assertions:
-  - error_rate < 1%
-  - p95 < 200ms
-  - throughput > 5000 req/s
+  - error_rate < 1%      # Ошибок меньше 1%
+  - p95 < 200ms          # 95% запросов быстрее 200ms
+  - throughput > 5000 req/s  # Пропускная способность > 5000 RPS

@@ -4,9 +4,11 @@ use crate::errors::BombardierResult;
 use crate::executor::worker::Worker;
 use crate::executor::context::Context;
 use crate::metrics::{MetricsAggregator, MetricsCollector, Metric};
+use crate::reporters::{ProgressReporter, TerminalReporter};
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{info, debug, error};
+use tracing::{info, debug};
+use colored::Colorize;  // Добавляем импорт
 
 pub struct Pool {
     config: Config,
@@ -48,6 +50,16 @@ impl Pool {
             }
         });
 
+        // Запускаем прогресс-бар
+        let progress_metrics = self.metrics.clone();
+        let progress_reporter = ProgressReporter::new(progress_metrics, duration);
+        let progress_handle = tokio::spawn({
+            let reporter = progress_reporter.clone();
+            async move {
+                reporter.run().await;
+            }
+        });
+
         // Копируем шаги для всех воркеров
         let steps = self.config.steps.clone();
         let context = self.context.clone();
@@ -61,6 +73,7 @@ impl Pool {
                 let sender = collector.get_sender();
                 let duration = duration.clone();
                 let worker_id = worker.id;
+                let progress_reporter = progress_reporter.clone();
 
                 tokio::spawn(async move {
                     let mut iteration = 0;
@@ -90,7 +103,13 @@ impl Pool {
                                     let _ = sender.send(metric);
                                 }
                                 Err(e) => {
-                                    error!("Воркер {} ошибка в шаге {}: {}", worker_id, step_name, e);
+                                    // Не выводим ошибку в консоль, а сохраняем
+                                    let error_msg = format!(
+                                        "Воркер {} ошибка в шаге {}: {}",
+                                        worker_id, step_name, e
+                                    );
+                                    progress_reporter.add_error(error_msg).await;
+                                    
                                     let metric = Metric {
                                         step_name,
                                         latency: start_time.elapsed(),
@@ -115,57 +134,29 @@ impl Pool {
         }
 
         // Ждём завершения обработчика метрик
-        // Просто дропаем sender, чтобы закрыть канал
         drop(collector);
-        
-        // Ждём пока обработчик метрик завершится
         let _ = metrics_handle.await;
 
-        // Показываем результаты
-        self.print_results().await;
+        // Ждём завершения прогресс-бара
+        let _ = progress_handle.await;
+
+        // Показываем ошибки если есть
+        let errors = progress_reporter.get_errors().await;
+        if !errors.is_empty() {
+            println!("\n{}", "⚠️  Ошибки во время выполнения:".bold().yellow());
+            for error in errors.iter().take(20) {
+                println!("  • {}", error);
+            }
+            if errors.len() > 20 {
+                println!("  ... и ещё {} ошибок", errors.len() - 20);
+            }
+        }
+
+        // Показываем финальные результаты
+        let snapshot = self.metrics.snapshot().await;
+        let reporter = TerminalReporter::new();
+        reporter.print(&snapshot);
 
         Ok(())
-    }
-
-    async fn print_results(&self) {
-        let snapshot = self.metrics.snapshot().await;
-
-        println!("\n📊 РЕЗУЛЬТАТЫ ТЕСТА");
-        println!("{}", "=".repeat(50));
-
-        println!("\n📈 Общая статистика:");
-        println!("  Всего запросов: {}", snapshot.total_requests);
-        println!("  Успешных: {}", snapshot.total_requests - snapshot.total_errors);
-        println!("  Ошибок: {}", snapshot.total_errors);
-        println!("  Success rate: {:.2}%", snapshot.success_rate);
-        println!("  Error rate: {:.2}%", snapshot.error_rate);
-        println!("  RPS: {:.2}", snapshot.rps);
-
-        println!("\n⏱️  Время ответа:");
-        println!("  Среднее: {}ms", snapshot.average_latency.as_millis());
-        println!("  p50: {}ms", snapshot.percentiles.p50.as_millis());
-        println!("  p75: {}ms", snapshot.percentiles.p75.as_millis());
-        println!("  p90: {}ms", snapshot.percentiles.p90.as_millis());
-        println!("  p95: {}ms", snapshot.percentiles.p95.as_millis());
-        println!("  p99: {}ms", snapshot.percentiles.p99.as_millis());
-        println!("  p99.9: {}ms", snapshot.percentiles.p99_9.as_millis());
-
-        if !snapshot.status_codes.is_empty() {
-            println!("\n📊 Статус коды:");
-            for (code, count) in &snapshot.status_codes {
-                let percentage = (*count as f64 / snapshot.total_requests as f64) * 100.0;
-                println!("  {}: {} ({:.1}%)", code, count, percentage);
-            }
-        }
-
-        if !snapshot.requests_by_step.is_empty() {
-            println!("\n📋 По шагам:");
-            for (step, count) in &snapshot.requests_by_step {
-                println!("  {}: {} запросов", step, count);
-            }
-        }
-
-        println!("\n{}", "=".repeat(50));
-        println!("✅ Тест завершён!");
     }
 }

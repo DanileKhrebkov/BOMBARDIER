@@ -141,7 +141,7 @@ fn generate_example_config(path: &Path) -> anyhow::Result<()> {
     let example = r#"name: "Тест API блога"
 settings:
   workers: 10
-  duration: 10s
+  duration: 30s
   ramp_up: 5s
 
 steps:
