@@ -5,10 +5,11 @@ use crate::executor::worker::Worker;
 use crate::executor::context::Context;
 use crate::metrics::{MetricsAggregator, MetricsCollector, Metric};
 use crate::reporters::{ProgressReporter, TerminalReporter};
+use crate::assertions::AssertionEvaluator;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{info, debug};
-use colored::Colorize;  // Добавляем импорт
+use colored::Colorize;
 
 pub struct Pool {
     config: Config,
@@ -156,6 +157,19 @@ impl Pool {
         let snapshot = self.metrics.snapshot().await;
         let reporter = TerminalReporter::new();
         reporter.print(&snapshot);
+
+        // Проверяем ассерты
+        if !self.config.assertions.is_empty() {
+            println!("\n{}", "🔍 Проверка условий...".bold().cyan());
+            let results = AssertionEvaluator::evaluate(&self.config.assertions, &snapshot)?;
+            let all_passed = AssertionEvaluator::print_results(&results);
+            
+            if !all_passed {
+                return Err(crate::errors::BombardierError::Assertion(
+                    "Некоторые проверки не пройдены".to_string()
+                ));
+            }
+        }
 
         Ok(())
     }
