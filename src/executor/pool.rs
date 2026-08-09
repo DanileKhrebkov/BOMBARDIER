@@ -145,12 +145,14 @@ impl Pool {
         let errors = progress_reporter.get_errors().await;
         if !errors.is_empty() {
             println!("\n{}", "⚠️  Ошибки во время выполнения:".bold().yellow());
-            for error in errors.iter().take(20) {
+            let display_count = errors.len().min(20);
+            for error in errors.iter().take(display_count) {
                 println!("  • {}", error);
             }
             if errors.len() > 20 {
                 println!("  ... и ещё {} ошибок", errors.len() - 20);
             }
+            println!();
         }
 
         // Показываем финальные результаты

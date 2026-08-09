@@ -20,11 +20,12 @@ impl ProgressReporter {
         let progress_bar = ProgressBar::new(duration.as_secs());
         progress_bar.set_style(
             ProgressStyle::default_bar()
-                .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len}s {msg}")
+                .template("{spinner:.green} [{elapsed_precise}] [{bar:30.cyan/blue}] {pos}/{len}s {msg}")
                 .unwrap()
                 .progress_chars("#>-")
         );
-        progress_bar.enable_steady_tick(Duration::from_millis(100));
+        // Убираем постоянное обновление, чтобы не моргало
+        progress_bar.disable_steady_tick();
 
         Self {
             metrics,
@@ -65,14 +66,14 @@ impl ProgressReporter {
                 0.0
             };
 
+            // Используем фиксированную ширину сообщения, чтобы не прыгало
             let msg = format!(
-                "📊 {} req | {} err ({:.1}%) | {:.1} RPS | p95: {}ms | {}",
-                total.to_string().bold().green(),
-                snapshot.total_errors.to_string().bold().red(),
+                "📊 {:>4} req | {:>3} err ({:>5.1}%) | {:>5.1} RPS | p95: {:>4}ms",
+                total,
+                snapshot.total_errors,
                 error_rate,
                 rps,
-                snapshot.percentiles.p95.as_millis().to_string().yellow(),
-                "⚡".green()
+                snapshot.percentiles.p95.as_millis()
             );
 
             self.progress_bar.set_message(msg);
@@ -89,9 +90,7 @@ impl ProgressReporter {
     pub async fn add_error(&self, error: String) {
         let mut errors = self.errors.lock().await;
         errors.push(error);
-        // Ограничиваем количество хранимых ошибок
         if errors.len() > 1000 {
-            // Просто обрезаем вектор до 1000 элементов
             errors.truncate(1000);
         }
     }

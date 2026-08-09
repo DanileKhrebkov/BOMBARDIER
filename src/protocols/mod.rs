@@ -5,3 +5,4 @@ pub mod websocket;
 pub mod protocol;
 
 pub use http::{HttpExecutor, HttpResponse};
+pub use websocket::{WebSocketExecutor, WebSocketStep, WebSocketMessage};

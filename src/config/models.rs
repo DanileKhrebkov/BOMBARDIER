@@ -65,6 +65,9 @@ fn default_workers() -> usize {
     10
 }
 
+// src/config/models.rs - используем старую структуру Step вместо StepType
+// Просто добавляем поддержку WebSocket в существующий Step
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Step {
     pub name: String,
@@ -82,6 +85,9 @@ pub struct Step {
     pub timeout: Option<Duration>,
     #[serde(default, with = "humantime_serde")]
     pub think_time: Option<Duration>,
+    // Добавляем WebSocket специфичные поля
+    #[serde(default)]
+    pub messages: Vec<crate::protocols::websocket::WebSocketMessage>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

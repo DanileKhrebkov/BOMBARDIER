@@ -1,0 +1,20 @@
+name: "Тест WebSocket Echo"
+settings:
+  workers: 3
+  duration: 30s
+
+steps:
+  - name: "echo_test"
+    protocol: websocket
+    url: "wss://echo.websocket.org"
+    messages:
+      - send: 'Hello WebSocket!'
+        expect: 'Hello WebSocket!'
+        wait: 1s
+      - send: '{"type": "ping", "data": "test"}'
+        expect_jsonpath: "$.type"
+        wait: 1s
+
+assertions:
+  - error_rate < 10%
+  - p95 < 3000ms
