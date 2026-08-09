@@ -6,7 +6,7 @@ use super::context::Context;
 use tracing::debug;
 
 pub struct Worker {
-    id: usize,
+    pub id: usize,  // Делаем публичным
     http_executor: HttpExecutor,
 }
 
@@ -35,7 +35,6 @@ impl Worker {
             let value = if let Some(jsonpath) = &extract.jsonpath {
                 // Парсим JSON и извлекаем по JSONPath
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(&response.body_str) {
-                    // Правильный синтаксис jsonpath_lib
                     let mut selector = jsonpath_lib::selector(&json);
                     if let Ok(result) = selector(jsonpath) {
                         if let Some(first) = result.first() {

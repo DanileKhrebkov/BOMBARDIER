@@ -14,7 +14,6 @@ mod utils;
 use clap::Parser;
 use tracing::info;
 use std::path::Path;
-use executor::Context;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -58,43 +57,11 @@ async fn main() -> anyhow::Result<()> {
                 return Ok(());
             }
             
-            // Создаём контекст для хранения переменных
-            let context = Context::new();
+            // Создаём пул воркеров
+            let pool = executor::Pool::new(config)?;
             
-            println!("⏳ Выполнение теста...");
-            println!("   Воркеров: {}", config.settings.workers);
-            if let Some(d) = config.settings.duration {
-                println!("   Длительность: {}s", d.as_secs());
-            }
-            println!("   Шагов: {}", config.steps.len());
-            
-            // Создаём воркера
-            let worker = executor::Worker::new(1)?;
-            
-            // Выполняем шаги
-            for (i, step) in config.steps.iter().enumerate() {
-                println!("\n🔄 Шаг {}: {}", i + 1, step.name);
-                
-                match worker.execute_step(step, &context).await {
-                    Ok(()) => {
-                        println!("   ✅ Шаг выполнен успешно");
-                        // Показываем извлечённые переменные
-                        let vars = context.get_all();
-                        if !vars.is_empty() {
-                            println!("   📌 Извлечённые переменные:");
-                            for (key, value) in &vars {
-                                println!("      {} = {}", key, value);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        println!("   ❌ Ошибка: {}", e);
-                        // Продолжаем выполнение
-                    }
-                }
-            }
-            
-            println!("\n✅ Тест завершён!");
+            // Запускаем тест
+            pool.run().await?;
         }
         cli::Commands::Validate(args) => {
             info!("Проверка конфига: {}", args.config.display());
@@ -173,9 +140,9 @@ fn generate_example_config(path: &Path) -> anyhow::Result<()> {
     
     let example = r#"name: "Тест API блога"
 settings:
-  workers: 50
-  duration: 60s
-  ramp_up: 10s
+  workers: 10
+  duration: 10s
+  ramp_up: 5s
 
 steps:
   - name: login
@@ -195,7 +162,7 @@ steps:
     url: https://httpbin.org/get
     headers:
       Authorization: "Bearer {{token}}"
-    think_time: 1s
+    think_time: 100ms
     timeout: 5s
 
 assertions:
