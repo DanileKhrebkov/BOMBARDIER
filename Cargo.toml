@@ -1,0 +1,44 @@
+[package]
+name = "bombardier"
+version = "0.1.0"
+edition = "2024"
+description = "CLI-инструмент для нагрузочного тестирования"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT"
+
+[[bin]]
+name = "bombardier"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+futures = "0.3"
+
+# CLI
+clap = { version = "4.5", features = ["derive", "color"] }
+
+# Config
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1.0"
+humantime = "2.1"
+serde_with = "3.0"
+
+# HTTP (пока не используется, но добавим на будущее)
+http = "1.1"
+bytes = "1.6"
+
+# Utils
+regex = "1.10"
+jsonpath_lib = "0.3"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "ansi"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+[dev-dependencies]

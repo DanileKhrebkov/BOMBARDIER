@@ -1,0 +1,31 @@
+name: "Тест API блога"
+settings:
+  workers: 50
+  duration: 60s
+  ramp_up: 10s
+
+steps:
+  - name: login
+    protocol: http
+    method: POST
+    url: https://httpbin.org/post
+    body:
+      username: "admin"
+      password: "password123"
+    extract:
+      - name: token
+        jsonpath: "$.json"
+
+  - name: get_posts
+    protocol: http
+    method: GET
+    url: https://httpbin.org/get
+    headers:
+      Authorization: "Bearer {{token}}"
+    think_time: 1s
+    timeout: 5s
+
+assertions:
+  - error_rate < 1%
+  - p95 < 200ms
+  - throughput > 5000 req/s

@@ -1,0 +1,21 @@
+# Для dev-версии можно использовать более строгие правила
+# Для релиза - отключаем некоторые
+
+# Отключаем слишком строгие правила
+allow = [
+    "clippy::module_name_repetitions",
+    "clippy::cast_precision_loss",
+    "clippy::cast_possible_truncation",
+]
+
+# Включаем дополнительные проверки
+warn = [
+    "clippy::pedantic",
+    "clippy::nursery",
+    "clippy::cargo",
+    "clippy::unwrap_used",
+]
+
+# Настройки
+cognitive-complexity-threshold = 15
+too-many-lines-threshold = 800
