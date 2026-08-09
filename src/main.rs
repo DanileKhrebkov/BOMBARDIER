@@ -14,8 +14,10 @@ mod utils;
 use clap::Parser;
 use tracing::info;
 use std::path::Path;
+use executor::Context;
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let cli = cli::Cli::parse();
     
     // Настройка логирования
@@ -49,77 +51,50 @@ fn main() -> anyhow::Result<()> {
                 println!("  Шагов: {}", config.steps.len());
                 for step in &config.steps {
                     println!("    - {} ({:?})", step.name, step.protocol);
-                    if !step.extract.is_empty() {
-                        println!("      Extract:");
-                        for ext in &step.extract {
-                            if let Some(jp) = &ext.jsonpath {
-                                println!("        - {} (JSONPath: {})", ext.name, jp);
-                            }
-                            if let Some(re) = &ext.regex {
-                                println!("        - {} (Regex: {})", ext.name, re);
-                            }
-                        }
-                    }
                 }
                 if !config.assertions.is_empty() {
                     println!("  Ассертов: {}", config.assertions.len());
-                    for assertion in &config.assertions {
-                        match assertion {
-                            config::Assertion::Simple(s) => println!("    - {}", s),
-                            config::Assertion::Structured { metric, operator, threshold } => {
-                                println!("    - {} {} {}", metric, operator, threshold);
-                            }
-                        }
-                    }
                 }
                 return Ok(());
             }
             
-            // TODO: Запуск нагрузки
-            println!("⏳ Запуск нагрузки (пока заглушка)...");
+            // Создаём контекст для хранения переменных
+            let context = Context::new();
+            
+            println!("⏳ Выполнение теста...");
             println!("   Воркеров: {}", config.settings.workers);
             if let Some(d) = config.settings.duration {
                 println!("   Длительность: {}s", d.as_secs());
             }
-            if let Some(r) = config.settings.ramp_up {
-                println!("   Ramp-up: {}s", r.as_secs());
-            }
             println!("   Шагов: {}", config.steps.len());
             
-            // Показываем шаги
+            // Создаём воркера
+            let worker = executor::Worker::new(1)?;
+            
+            // Выполняем шаги
             for (i, step) in config.steps.iter().enumerate() {
-                println!("\n   Шаг {}: {}", i + 1, step.name);
-                println!("     Протокол: {:?}", step.protocol);
-                println!("     URL: {}", step.url);
-                if let Some(m) = &step.method {
-                    println!("     Метод: {:?}", m);
-                }
-                if !step.headers.is_empty() {
-                    println!("     Заголовки: {:?}", step.headers);
-                }
-                if let Some(b) = &step.body {
-                    println!("     Body: {:?}", b);
-                }
-                if !step.extract.is_empty() {
-                    println!("     Экстракты:");
-                    for ext in &step.extract {
-                        if let Some(jp) = &ext.jsonpath {
-                            println!("       - {} (JSONPath: {})", ext.name, jp);
-                        }
-                        if let Some(re) = &ext.regex {
-                            println!("       - {} (Regex: {})", ext.name, re);
+                println!("\n🔄 Шаг {}: {}", i + 1, step.name);
+                
+                match worker.execute_step(step, &context).await {
+                    Ok(()) => {
+                        println!("   ✅ Шаг выполнен успешно");
+                        // Показываем извлечённые переменные
+                        let vars = context.get_all();
+                        if !vars.is_empty() {
+                            println!("   📌 Извлечённые переменные:");
+                            for (key, value) in &vars {
+                                println!("      {} = {}", key, value);
+                            }
                         }
                     }
-                }
-                if let Some(t) = step.timeout {
-                    println!("     Таймаут: {}ms", t.as_millis());
-                }
-                if let Some(t) = step.think_time {
-                    println!("     Think time: {}ms", t.as_millis());
+                    Err(e) => {
+                        println!("   ❌ Ошибка: {}", e);
+                        // Продолжаем выполнение
+                    }
                 }
             }
             
-            println!("\n✅ Dry-run завершён успешно!");
+            println!("\n✅ Тест завершён!");
         }
         cli::Commands::Validate(args) => {
             info!("Проверка конфига: {}", args.config.display());
