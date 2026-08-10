@@ -2,7 +2,9 @@
 use crate::config::Step;
 use crate::errors::BombardierResult;
 use crate::protocols::{HttpExecutor, WebSocketExecutor, WebSocketStep};
+use crate::protocols::grpc::GrpcExecutor;
 use super::context::Context;
+use std::collections::HashMap;
 use tracing::debug;
 
 pub struct Worker {
@@ -89,9 +91,42 @@ impl Worker {
                     self.id, response.messages.len(), response.latency.as_millis());
             }
             crate::config::Protocol::Grpc => {
-                return Err(crate::errors::BombardierError::Grpc(
-                    "gRPC пока не поддерживается".to_string()
-                ));
+                debug!("Воркер {} выполняет gRPC шаг: {}", self.id, step.name);
+                
+                // Получаем имя метода из grpc_method
+                let _method_name = step.grpc_method.as_ref()
+                    .ok_or_else(|| crate::errors::BombardierError::Grpc(
+                        "Для gRPC шага должен быть указан grpc_method".to_string()
+                    ))?;
+                
+                // Создаём gRPC executor
+                let grpc_executor = GrpcExecutor::new(step.url.clone());
+                
+                // Преобразуем request в HashMap
+                let mut request_map = HashMap::new();
+                if let Some(request_json) = &step.grpc_request {
+                    if let Some(obj) = request_json.as_object() {
+                        for (key, value) in obj {
+                            if let Some(str_val) = value.as_str() {
+                                let rendered = Self::render_template(str_val, &context_vars);
+                                request_map.insert(key.clone(), rendered);
+                            } else {
+                                request_map.insert(key.clone(), value.to_string());
+                            }
+                        }
+                    }
+                }
+                
+                let response = grpc_executor.execute(&request_map, step.timeout).await?;
+                
+                if !response.success {
+                    return Err(crate::errors::BombardierError::Grpc(
+                        "gRPC запрос не удался".to_string()
+                    ));
+                }
+                
+                debug!("Воркер {} gRPC завершён: {}ms, message: {}", 
+                    self.id, response.latency.as_millis(), response.message);
             }
         }
 
@@ -102,5 +137,14 @@ impl Worker {
         }
 
         Ok(())
+    }
+
+    fn render_template(template: &str, context: &HashMap<String, String>) -> String {
+        let mut result = template.to_string();
+        for (key, value) in context {
+            let placeholder = format!("{{{{{}}}}}", key);
+            result = result.replace(&placeholder, value);
+        }
+        result
     }
 }

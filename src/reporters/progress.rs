@@ -4,7 +4,6 @@ use indicatif::{ProgressBar, ProgressStyle};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time;
-use colored::Colorize;
 
 #[derive(Clone)]
 pub struct ProgressReporter {

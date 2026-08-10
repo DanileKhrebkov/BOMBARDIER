@@ -65,15 +65,12 @@ fn default_workers() -> usize {
     10
 }
 
-// src/config/models.rs - используем старую структуру Step вместо StepType
-// Просто добавляем поддержку WebSocket в существующий Step
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Step {
     pub name: String,
     pub protocol: Protocol,
     #[serde(default)]
-    pub method: Option<Method>,
+    pub method: Option<Method>,  // Только для HTTP
     pub url: String,
     #[serde(default)]
     pub headers: HashMap<String, String>,
@@ -85,9 +82,14 @@ pub struct Step {
     pub timeout: Option<Duration>,
     #[serde(default, with = "humantime_serde")]
     pub think_time: Option<Duration>,
-    // Добавляем WebSocket специфичные поля
+    // WebSocket
     #[serde(default)]
     pub messages: Vec<crate::protocols::websocket::WebSocketMessage>,
+    // gRPC
+    #[serde(default)]
+    pub grpc_method: Option<String>,
+    #[serde(default)]
+    pub grpc_request: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,13 +127,10 @@ pub struct Extract {
     pub regex: Option<String>,
 }
 
-// Новый формат ассертов - строка с условием
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Assertion {
-    /// Простой строковый ассерт: "error_rate < 1%"
     Simple(String),
-    /// Структурированный ассерт (для будущего расширения)
     Structured {
         metric: String,
         operator: String,

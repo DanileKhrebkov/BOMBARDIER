@@ -1,11 +1,12 @@
 // src/protocols/websocket/client.rs
 use crate::errors::{BombardierError, BombardierResult};
-use crate::protocols::websocket::message::{WebSocketMessage, WebSocketStep};
+use crate::protocols::websocket::message::WebSocketStep;  // Убираем WebSocketMessage
 use futures::{SinkExt, StreamExt};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use tracing::debug;
+
 
 pub struct WebSocketExecutor;
 

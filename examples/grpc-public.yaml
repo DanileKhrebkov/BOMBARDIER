@@ -1,0 +1,17 @@
+name: "Тест публичного gRPC сервера"
+settings:
+  workers: 2
+  duration: 5s
+
+steps:
+  - name: "grpc_test"
+    protocol: grpc
+    url: "http://grpcbin.test.anddd7.com:9000"
+    grpc_method: "UnaryCall"
+    grpc_request:
+      response:
+        message: "Hello"
+    timeout: 5s
+
+assertions:
+  - error_rate < 50%

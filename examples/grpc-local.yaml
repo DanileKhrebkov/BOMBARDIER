@@ -1,0 +1,17 @@
+name: "Тест локального grpcbin"
+settings:
+  workers: 2
+  duration: 5s
+
+steps:
+  - name: "grpc_test"
+    protocol: grpc
+    url: "http://localhost:50051"
+    grpc_method: "UnaryCall"
+    grpc_request:
+      response:
+        message: "Hello from Bombardier!"
+    timeout: 5s
+
+assertions:
+  - error_rate < 50%
