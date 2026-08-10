@@ -1,0 +1,40 @@
+name: "HTTP Базовый тест"
+settings:
+  workers: 10
+  duration: 30s
+  ramp_up: 5s
+
+steps:
+  - name: "get_request"
+    protocol: http
+    method: GET
+    url: "https://httpbin.org/get"
+    headers:
+      User-Agent: "Bombardier/1.0"
+    timeout: 5s
+
+  - name: "post_json"
+    protocol: http
+    method: POST
+    url: "https://httpbin.org/post"
+    headers:
+      Content-Type: "application/json"
+    body:
+      test: "data"
+      user: "admin"
+    timeout: 5s
+    think_time: 500ms
+
+  - name: "put_request"
+    protocol: http
+    method: PUT
+    url: "https://httpbin.org/put"
+    body:
+      id: 123
+      status: "updated"
+    timeout: 5s
+
+assertions:
+  - error_rate < 1%
+  - p95 < 2000ms
+  - throughput > 500 req/s

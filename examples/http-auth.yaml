@@ -1,0 +1,30 @@
+name: "HTTP с авторизацией"
+settings:
+  workers: 5
+  duration: 20s
+
+steps:
+  - name: "login"
+    protocol: http
+    method: POST
+    url: "https://httpbin.org/post"
+    body:
+      username: "admin"
+      password: "password123"
+    extract:
+      - name: token
+        jsonpath: "$.json"
+    timeout: 5s
+
+  - name: "protected_resource"
+    protocol: http
+    method: GET
+    url: "https://httpbin.org/get"
+    headers:
+      Authorization: "Bearer {{token}}"
+    timeout: 5s
+    think_time: 1s
+
+assertions:
+  - error_rate < 5%
+  - p95 < 3000ms

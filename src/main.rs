@@ -19,7 +19,6 @@ use std::path::Path;
 async fn main() -> anyhow::Result<()> {
     let cli = cli::Cli::parse();
     
-    // Настройка логирования
     logging::init(cli.verbose);
     
     info!("🚀 Запуск Bombardier v{}", env!("CARGO_PKG_VERSION"));
@@ -28,40 +27,47 @@ async fn main() -> anyhow::Result<()> {
         cli::Commands::Run(args) => {
             info!("Запуск теста с конфигом: {}", args.config.display());
             
-            // Загружаем конфиг
             let config = config::load_config(&args.config)?;
             info!("✅ Конфиг загружен: {}", config.name);
             
-            // Валидируем
             config::Validator::validate(&config)?;
             info!("✅ Конфиг валиден");
             
             if args.dry_run {
                 println!("🔍 Dry-run режим: проверка выполнена успешно");
-                println!("📋 Конфиг:");
-                println!("  Название: {}", config.name);
-                println!("  Воркеров: {}", config.settings.workers);
-                if let Some(d) = config.settings.duration {
-                    println!("  Длительность: {}s", d.as_secs());
-                }
-                if let Some(r) = config.settings.ramp_up {
-                    println!("  Ramp-up: {}s", r.as_secs());
-                }
-                println!("  Шагов: {}", config.steps.len());
-                for step in &config.steps {
-                    println!("    - {} ({:?})", step.name, step.protocol);
-                }
-                if !config.assertions.is_empty() {
-                    println!("  Ассертов: {}", config.assertions.len());
-                }
                 return Ok(());
             }
             
-            // Создаём пул воркеров
-            let pool = executor::Pool::new(config)?;
+            let pool = executor::Pool::new(config.clone())?;
             
-            // Запускаем тест
-            pool.run().await?;
+            // Запускаем тест, но не выходим при ошибке ассертов
+            let test_result = pool.run().await;
+            
+            // ВСЕГДА получаем snapshot
+            let snapshot = pool.get_snapshot().await;
+            
+            // Экспортируем JSON
+            if let Some(json_path) = args.json {
+                let reporter = reporters::JsonReporter::new();
+                if let Err(e) = reporter.export(&config, &snapshot, &json_path) {
+                    eprintln!("❌ Ошибка экспорта JSON: {}", e);
+                } else {
+                    println!("✅ JSON отчёт сохранён: {}", json_path.display());
+                }
+            }
+            
+            // Экспортируем HTML
+            if let Some(html_path) = args.html {
+                let reporter = reporters::HtmlReporter::new();
+                if let Err(e) = reporter.export(&config, &snapshot, &html_path) {
+                    eprintln!("❌ Ошибка экспорта HTML: {}", e);
+                } else {
+                    println!("✅ HTML отчёт сохранён: {}", html_path.display());
+                }
+            }
+            
+            // Теперь возвращаем ошибку если была
+            test_result?;
         }
         cli::Commands::Validate(args) => {
             info!("Проверка конфига: {}", args.config.display());
@@ -102,6 +108,20 @@ async fn main() -> anyhow::Result<()> {
                             }
                             if let Some(re) = &ext.regex {
                                 println!("      - {} (Regex: {})", ext.name, re);
+                            }
+                        }
+                    }
+                    if !step.messages.is_empty() {
+                        println!("    WebSocket сообщения:");
+                        for msg in &step.messages {
+                            if let Some(send) = &msg.send {
+                                println!("      - send: {}", send);
+                            }
+                            if let Some(expect) = &msg.expect {
+                                println!("        expect: {}", expect);
+                            }
+                            if let Some(jp) = &msg.expect_jsonpath {
+                                println!("        expect_jsonpath: {}", jp);
                             }
                         }
                     }
@@ -162,7 +182,7 @@ steps:
     url: https://httpbin.org/get
     headers:
       Authorization: "Bearer {{token}}"
-    think_time: 100ms
+    think_time: 1s
     timeout: 5s
 
 assertions:

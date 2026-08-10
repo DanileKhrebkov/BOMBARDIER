@@ -1,0 +1,23 @@
+name: "WebSocket Чат тест"
+settings:
+  workers: 2
+  duration: 10s
+
+steps:
+  - name: "chat_messages"
+    protocol: websocket
+    url: "wss://ws.postman-echo.com/raw"
+    messages:
+      - send: "Привет!"
+        expect: "Привет!"
+        wait: 1s
+      - send: "Как дела?"
+        expect: "Как дела?"
+        wait: 1s
+      - send: '{"message": "json test"}'
+        expect_jsonpath: "$.message"
+        wait: 1s
+    timeout: 10s
+
+assertions:
+  - error_rate < 50%

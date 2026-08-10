@@ -84,12 +84,10 @@ impl Pool {
                         iteration += 1;
                         debug!("Воркер {} итерация {}", worker_id, iteration);
 
-                        // Выполняем все шаги
                         for step in &steps {
                             let step_name = step.name.clone();
                             let start_time = std::time::Instant::now();
 
-                            // Временно создаём воркера для выполнения
                             let worker = Worker::new(worker_id).unwrap();
                             match worker.execute_step(step, &context).await {
                                 Ok(_) => {
@@ -104,7 +102,6 @@ impl Pool {
                                     let _ = sender.send(metric);
                                 }
                                 Err(e) => {
-                                    // Не выводим ошибку в консоль, а сохраняем
                                     let error_msg = format!(
                                         "Воркер {} ошибка в шаге {}: {}",
                                         worker_id, step_name, e
@@ -129,19 +126,14 @@ impl Pool {
             })
             .collect();
 
-        // Ждём завершения всех воркеров
         for handle in handles {
             let _ = handle.await;
         }
 
-        // Ждём завершения обработчика метрик
         drop(collector);
         let _ = metrics_handle.await;
-
-        // Ждём завершения прогресс-бара
         let _ = progress_handle.await;
 
-        // Показываем ошибки если есть
         let errors = progress_reporter.get_errors().await;
         if !errors.is_empty() {
             println!("\n{}", "⚠️  Ошибки во время выполнения:".bold().yellow());
@@ -155,12 +147,10 @@ impl Pool {
             println!();
         }
 
-        // Показываем финальные результаты
         let snapshot = self.metrics.snapshot().await;
         let reporter = TerminalReporter::new();
         reporter.print(&snapshot);
 
-        // Проверяем ассерты
         if !self.config.assertions.is_empty() {
             println!("\n{}", "🔍 Проверка условий...".bold().cyan());
             let results = AssertionEvaluator::evaluate(&self.config.assertions, &snapshot)?;
@@ -174,5 +164,9 @@ impl Pool {
         }
 
         Ok(())
+    }
+
+    pub async fn get_snapshot(&self) -> crate::metrics::MetricsSnapshot {
+        self.metrics.snapshot().await
     }
 }

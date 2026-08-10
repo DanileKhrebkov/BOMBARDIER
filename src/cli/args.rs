@@ -17,11 +17,11 @@ pub struct RunArgs {
     pub duration: Option<String>,
     
     /// Путь для сохранения HTML отчёта
-    #[arg(short, long)]
-    pub report: Option<PathBuf>,
+    #[arg(long)]
+    pub html: Option<PathBuf>,
     
     /// Путь для сохранения JSON отчёта
-    #[arg(short = 'j', long)]
+    #[arg(long)]
     pub json: Option<PathBuf>,
     
     /// Режим проверки без выполнения

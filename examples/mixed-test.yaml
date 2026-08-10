@@ -1,0 +1,33 @@
+name: "Смешанный тест HTTP + WebSocket"
+settings:
+  workers: 3
+  duration: 20s
+
+steps:
+  - name: "http_health"
+    protocol: http
+    method: GET
+    url: "https://httpbin.org/status/200"
+    timeout: 3s
+
+  - name: "websocket_echo"
+    protocol: websocket
+    url: "wss://echo.websocket.org"
+    messages:
+      - send: "Test from mixed test"
+        expect: "Test from mixed test"
+        wait: 500ms
+    timeout: 5s
+
+  - name: "http_post"
+    protocol: http
+    method: POST
+    url: "https://httpbin.org/post"
+    body:
+      source: "mixed_test"
+      timestamp: "{{timestamp}}"
+    timeout: 3s
+
+assertions:
+  - error_rate < 10%
+  - p95 < 5000ms
