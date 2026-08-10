@@ -1,4 +1,5 @@
-/target
+# Rust
+/target/
 **/*.rs.bk
 *.swp
 *.swo
@@ -7,15 +8,36 @@
 *.profdata
 *.profraw
 *.cov
-*.html
-*.json
-.report
-.idea
-.vscode
+
+# IDE
+.idea/
+.vscode/
 *.iml
 .DS_Store
+
+# Reports
+/reports/
+*.html
+*.json
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+Cargo.lock
+
+# Build artifacts
 *.pem
 *.key
-.env
-reports/
+*.pub
+
+# OS files
+Thumbs.db
+*.tmp
+
+# Misc
+.report/
 data/
+*.sock
