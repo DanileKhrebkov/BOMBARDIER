@@ -9,7 +9,7 @@ CLI-инструмент для нагрузочного тестировани�
 
 ```bash
 # Клонируем репозиторий
-git clone https://github.com/yourusername/bombardier.git
+git clone https://github.com/DanileKhrebkov/bombardier.git
 cd bombardier
 
 # Собираем
